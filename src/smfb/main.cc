@@ -4,7 +4,6 @@
 
 #include <core/app-template.hh>
 #include <core/prometheus.hh>
-#include <core/httpd.hh>
 
 #include "chain_replication/chain_replication_service.h"
 #include "filesystem/wal.h"
@@ -66,6 +65,10 @@ int main(int argc, char **argv, char **env) {
         LOG_INFO("Stopping write_ahead_log");
         return log.stop();
       });
+      seastar::engine().at_exit([&prometheus] {
+        LOG_INFO("Shutting down the prometheus server");
+        return prometheus.stop();
+      });
 
       LOG_INFO("Validating command line flags");
       smf::smfb_command_line_options::validate(app.configuration());
@@ -103,7 +106,7 @@ int main(int argc, char **argv, char **env) {
         .then([&prometheus, &pctx] {
           return prometheus.start("prometheus").then([&] {
             return seastar::prometheus::start(prometheus, pctx).then([&] {
-                return prometheus.listen(seastar::ipv4_addr{"127.0.0.1", 33140})
+              return prometheus.listen(seastar::ipv4_addr{"127.0.0.1", 33140})
                 .handle_exception([](auto ep) {
                   LOG_ERROR("Could not start Prometheus API server on 33140");
                   return seastar::make_exception_future<>(ep);
