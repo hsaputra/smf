@@ -177,7 +177,7 @@ int main(int args, char **argv, char **env) {
           .then([](smf::histogram h) {
             DLOG_DEBUG("Writing client histograms");
             return smf::histogram_seastar_utils::write_histogram(
-              "clients_hdr.txt", std::move(h));
+              "clients_hdr.hgrm", std::move(h));
           });
       })
       .then([&] {
@@ -187,7 +187,7 @@ int main(int args, char **argv, char **env) {
           .then([](smf::histogram h) {
             DLOG_DEBUG("Writing server histograms");
             return smf::histogram_seastar_utils::write_histogram(
-              "server_hdr.txt", std::move(h));
+              "server_hdr.hgrm", std::move(h));
           });
       })
       .then([] {

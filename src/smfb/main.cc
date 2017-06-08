@@ -82,7 +82,7 @@ int main(int argc, char **argv, char **env) {
                         &smf::rpc_server::copy_histogram)
             .then([](smf::histogram h) {
               return smf::histogram_seastar_utils::write_histogram(
-                "server_hdr.txt", std::move(h));
+                "server_hdr.hgrm", std::move(h));
             });
         });
       }
