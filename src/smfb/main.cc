@@ -3,6 +3,8 @@
 #include <iostream>
 
 #include <core/app-template.hh>
+#include <core/prometheus.hh>
+#include <core/httpd.hh>
 
 #include "chain_replication/chain_replication_service.h"
 #include "filesystem/wal.h"
@@ -32,6 +34,10 @@ int main(int argc, char **argv, char **env) {
   seastar::distributed<smf::write_ahead_log>     log;
   std::unique_ptr<smf::rpc_server_stats_printer> rpc_printer;
 
+  seastar::httpd::http_server_control prometheus;
+  seastar::prometheus::config         pctx;
+  pctx.metric_help = "smf-broker statistics";
+  pctx.prefix      = "smf";
 
   seastar::app_template app;
 
@@ -94,6 +100,17 @@ int main(int argc, char **argv, char **env) {
       return smf::checks::disk::check(
                config["write-ahead-log-dir"].as<std::string>(),
                config["developer"].as<bool>())
+        .then([&prometheus, &pctx] {
+          return prometheus.start("prometheus").then([&] {
+            return seastar::prometheus::start(prometheus, pctx).then([&] {
+                return prometheus.listen(seastar::ipv4_addr{"127.0.0.1", 33140})
+                .handle_exception([](auto ep) {
+                  LOG_ERROR("Could not start Prometheus API server on 33140");
+                  return seastar::make_exception_future<>(ep);
+                });
+            });
+          });
+        })
         .then([&rpc_stats] {
           LOG_INFO("Setting up at_exit hooks");
           return rpc_stats.start();
